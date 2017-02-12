@@ -40,21 +40,21 @@ body * {
 <div id='after' class='map'></div>
 <script>
 mapboxgl.accessToken = 'pk.eyJ1Ijoicm9kb3dpIiwiYSI6ImdZdDkyQU0ifQ.bPu86kwHgaenPhYp84g1yg';
-var beforeMap = new mapboxgl.Map({
+var satMap = new mapboxgl.Map({
     container: 'before',
     style: 'mapbox://styles/mapbox/satellite-v9',
     center: [0, 0],
     zoom: 0
 });
 
-var afterMap = new mapboxgl.Map({
+var osMap = new mapboxgl.Map({
     container: 'after',
     style: 'mapbox://styles/rodowi/ciz26g64u002g2spru77a8mk0',
     center: [0, 0],
     zoom: 0
 });
 
-var map = new mapboxgl.Compare(beforeMap, afterMap, {
+var map = new mapboxgl.Compare(satMap, osMap, {
     // Set this to enable comparing two maps by mouse movement:
     // mousemove: true
 });
