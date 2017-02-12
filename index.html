@@ -58,6 +58,22 @@ var map = new mapboxgl.Compare(satMap, osMap, {
     // Set this to enable comparing two maps by mouse movement:
     // mousemove: true
 });
+
+osMap.on('click', function(e) {
+    // set bbox as 5px reactangle area around clicked point
+    var bbox = [
+        [ e.point.x - 5, e.point.y - 5 ],
+        [ e.point.x + 5, e.point.y + 5 ]
+    ];
+    var features = osMap.queryRenderedFeatures(bbox, { layers: ['tiles'] });
+    for (var i = 0; i < features.length; i++) {
+        var tile = features[i].properties.title
+          .match(/(\d+, \d+, \d+)/)[0]
+          .split(', ')
+        console.log('clicking tile', tile)
+    }
+});
+
 </script>
 
 </body>
