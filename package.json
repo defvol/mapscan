@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "description": "control panel for the unmapped",
   "main": "index.js",
+  "scripts": {
+    "build": "browserify index.js -o bundle.js"
+  },
   "repository": {},
   "author": "Rodolfo Wilhelmy <rwilhelmy@gmail.com>",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@mapbox/tilebelt": "^1.0.1",
+    "browserify": "^14.0.0"
+  }
 }
