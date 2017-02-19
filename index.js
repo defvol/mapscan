@@ -1,6 +1,11 @@
 var q = require('d3-queue');
 var tilebelt = require('@mapbox/tilebelt');
 
+var subgrid = {
+    type: 'FeatureCollection',
+    features: []
+};
+
 mapboxgl.accessToken = 'pk.eyJ1Ijoicm9kb3dpIiwiYSI6ImdZdDkyQU0ifQ.bPu86kwHgaenPhYp84g1yg';
 
 /**
@@ -20,9 +25,11 @@ function getChildren(tile, depth) {
     return cc;
 }
 
-function processTile(tile, callback) {
+function processTile(tile, featureIndex, osMap, callback) {
     setTimeout(function () {
         console.log('finished processing', tile);
+        subgrid.features[featureIndex].properties.processed = true;
+        osMap.getSource('subgrid').setData(subgrid);
         callback();
     }, 100);
 }
@@ -44,10 +51,6 @@ window.onload = function() {
 
   osMap.on('load', function() {
       var busy = false;
-      var subgrid = {
-          type: 'FeatureCollection',
-          features: []
-      };
 
       osMap.addSource('grid', {
           'type': 'vector',
@@ -65,18 +68,6 @@ window.onload = function() {
           }
       });
 
-      osMap.addLayer({
-          'id': 'tiles-highlighted',
-          'type': 'fill',
-          'source': 'grid',
-          'source-layer': 'tiles',
-          'paint': {
-              'fill-color': 'hsla(293,1.0,0.5,0.25)',
-              'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
-          },
-          'filter': ['in', 'title', '']
-      });
-
       osMap.addSource('subgrid', {
           type: 'geojson',
           data: subgrid
@@ -92,6 +83,17 @@ window.onload = function() {
           }
       });
 
+      osMap.addLayer({
+          'id': 'subtiles-highlighted',
+          'type': 'fill',
+          'source': 'subgrid',
+          'paint': {
+              'fill-color': 'hsla(293,1.0,0.5,0.25)',
+              'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
+          },
+          'filter': ['has', 'processed']
+      });
+
       osMap.on('click', function(e) {
           if (busy) {
               console.log('we are busy processing tiles, try again later');
@@ -100,12 +102,10 @@ window.onload = function() {
 
           busy = true;
           var queue = q.queue(1)
-          var filter = ['in', 'title'];
           var layers = ['tiles'];
           var features = osMap.queryRenderedFeatures(e.point, { layers: layers });
           for (var i = 0; i < features.length; i++) {
               var title = features[i].properties.title;
-              filter.push(title);
               var tile = title
                   .match(/(\d+, \d+, \d+)/)[0]
                   .split(', ')
@@ -121,7 +121,7 @@ window.onload = function() {
                       geometry: tilebelt.tileToGeoJSON(z16[i])
                   };
                   subgrid.features.push(f);
-                  queue.defer(processTile, z16[i]);
+                  queue.defer(processTile, z16[i], i, osMap);
               }
               osMap.getSource('subgrid').setData(subgrid);
           }
@@ -131,8 +131,6 @@ window.onload = function() {
               if (err) console.log(err);
               else console.log('finished %d z16 tiles', results.length);
           });
-
-          osMap.setFilter('tiles-highlighted', filter);
       });
   });
 
