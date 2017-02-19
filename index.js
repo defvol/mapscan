@@ -62,7 +62,7 @@ window.onload = function() {
           'source': 'grid',
           'source-layer': 'tiles',
           'paint': {
-              'fill-color': 'hsla(293,1.0,0.5,0.5)',
+              'fill-color': 'hsla(293,1.0,0.5,0.25)',
               'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
           },
           'filter': ['in', 'title', '']
@@ -112,8 +112,5 @@ window.onload = function() {
       });
   });
 
-  var map = new mapboxgl.Compare(satMap, osMap, {
-      // Set this to enable comparing two maps by mouse movement:
-      // mousemove: true
-  });
+  var map = new mapboxgl.Compare(satMap, osMap, {});
 };
