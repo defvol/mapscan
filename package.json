@@ -13,6 +13,7 @@
   "dependencies": {
     "@mapbox/tilebelt": "^1.0.1",
     "browserify": "^14.0.0",
-    "budo": "^9.4.7"
+    "budo": "^9.4.7",
+    "d3-queue": "^3.0.3"
   }
 }

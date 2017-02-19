@@ -1,3 +1,4 @@
+var q = require('d3-queue');
 var tilebelt = require('@mapbox/tilebelt');
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoicm9kb3dpIiwiYSI6ImdZdDkyQU0ifQ.bPu86kwHgaenPhYp84g1yg';
@@ -19,6 +20,13 @@ function getChildren(tile, depth) {
     return cc;
 }
 
+function processTile(tile, callback) {
+    setTimeout(function () {
+        console.log('finished processing', tile);
+        callback();
+    }, 100);
+}
+
 window.onload = function() {
   var satMap = new mapboxgl.Map({
       container: 'before',
@@ -35,10 +43,11 @@ window.onload = function() {
   });
 
   osMap.on('load', function() {
+      var busy = false;
       var subgrid = {
           type: 'FeatureCollection',
           features: []
-      }
+      };
 
       osMap.addSource('grid', {
           'type': 'vector',
@@ -84,6 +93,13 @@ window.onload = function() {
       });
 
       osMap.on('click', function(e) {
+          if (busy) {
+              console.log('we are busy processing tiles, try again later');
+              return;
+          }
+
+          busy = true;
+          var queue = q.queue(1)
           var filter = ['in', 'title'];
           var layers = ['tiles'];
           var features = osMap.queryRenderedFeatures(e.point, { layers: layers });
@@ -99,14 +115,22 @@ window.onload = function() {
               var z16 = getChildren(tile, 4);
               subgrid.features = [];
               for (var i = 0; i < z16.length; i++) {
-                  subgrid.features.push({
+                  var f = {
                       type: 'Feature',
                       properties: {},
                       geometry: tilebelt.tileToGeoJSON(z16[i])
-                  });
+                  };
+                  subgrid.features.push(f);
+                  queue.defer(processTile, z16[i]);
               }
               osMap.getSource('subgrid').setData(subgrid);
           }
+
+          queue.awaitAll(function (err, results) {
+              busy = false;
+              if (err) console.log(err);
+              else console.log('finished %d z16 tiles', results.length);
+          });
 
           osMap.setFilter('tiles-highlighted', filter);
       });
