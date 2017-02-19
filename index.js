@@ -96,13 +96,13 @@ window.onload = function() {
                   .map(s => parseInt(s));
               console.log('clicking tile', tile);
 
-              var z13 = getChildren(tile, 1);
+              var z16 = getChildren(tile, 4);
               subgrid.features = [];
-              for (var i = 0; i < z13.length; i++) {
+              for (var i = 0; i < z16.length; i++) {
                   subgrid.features.push({
                       type: 'Feature',
                       properties: {},
-                      geometry: tilebelt.tileToGeoJSON(z13[i])
+                      geometry: tilebelt.tileToGeoJSON(z16[i])
                   });
               }
               osMap.getSource('subgrid').setData(subgrid);
