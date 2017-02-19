@@ -35,6 +35,11 @@ window.onload = function() {
   });
 
   osMap.on('load', function() {
+      var subgrid = {
+          type: 'FeatureCollection',
+          features: []
+      }
+
       osMap.addSource('grid', {
           'type': 'vector',
           'url': 'mapbox://rodowi.3hb2t4ac'
@@ -63,6 +68,21 @@ window.onload = function() {
           'filter': ['in', 'title', '']
       });
 
+      osMap.addSource('subgrid', {
+          type: 'geojson',
+          data: subgrid
+      });
+
+      osMap.addLayer({
+          'id': 'subtiles',
+          'type': 'fill',
+          'source': 'subgrid',
+          'paint': {
+              'fill-color': 'hsla(0,0,1,0)',
+              'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
+          }
+      });
+
       osMap.on('click', function(e) {
           var filter = ['in', 'title'];
           var layers = ['tiles'];
@@ -75,8 +95,17 @@ window.onload = function() {
                   .split(', ')
                   .map(s => parseInt(s));
               console.log('clicking tile', tile);
-              var z13 = getChildren(tile, 1).map(t => t.join('/'));
-              console.log('z13 children are', z13);
+
+              var z13 = getChildren(tile, 1);
+              subgrid.features = [];
+              for (var i = 0; i < z13.length; i++) {
+                  subgrid.features.push({
+                      type: 'Feature',
+                      properties: {},
+                      geometry: tilebelt.tileToGeoJSON(z13[i])
+                  });
+              }
+              osMap.getSource('subgrid').setData(subgrid);
           }
 
           osMap.setFilter('tiles-highlighted', filter);
