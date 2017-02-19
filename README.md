@@ -9,3 +9,5 @@ A side-by-side comparison of mapbox-satellite vs mapbox-streets. Ground truth on
 ```sh
 % npm start
 ```
+
+![scanning](https://raw.githubusercontent.com/rodowi/mapscan/master/scanning.gif)
