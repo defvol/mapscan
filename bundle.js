@@ -1,5 +1,11 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+var q = require('d3-queue');
 var tilebelt = require('@mapbox/tilebelt');
+
+var subgrid = {
+    type: 'FeatureCollection',
+    features: []
+};
 
 mapboxgl.accessToken = 'pk.eyJ1Ijoicm9kb3dpIiwiYSI6ImdZdDkyQU0ifQ.bPu86kwHgaenPhYp84g1yg';
 
@@ -20,6 +26,15 @@ function getChildren(tile, depth) {
     return cc;
 }
 
+function processTile(tile, featureIndex, osMap, callback) {
+    setTimeout(function () {
+        console.log('finished processing', tile);
+        subgrid.features[featureIndex].properties.processed = true;
+        osMap.getSource('subgrid').setData(subgrid);
+        callback();
+    }, 100);
+}
+
 window.onload = function() {
   var satMap = new mapboxgl.Map({
       container: 'before',
@@ -36,6 +51,8 @@ window.onload = function() {
   });
 
   osMap.on('load', function() {
+      var busy = false;
+
       osMap.addSource('grid', {
           'type': 'vector',
           'url': 'mapbox://rodowi.3hb2t4ac'
@@ -52,45 +69,76 @@ window.onload = function() {
           }
       });
 
+      osMap.addSource('subgrid', {
+          type: 'geojson',
+          data: subgrid
+      });
+
       osMap.addLayer({
-          'id': 'tiles-highlighted',
+          'id': 'subtiles',
           'type': 'fill',
-          'source': 'grid',
-          'source-layer': 'tiles',
+          'source': 'subgrid',
           'paint': {
-              'fill-color': 'hsla(293,1.0,0.5,0.5)',
+              'fill-color': 'hsla(0,0,1,0)',
+              'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
+          }
+      });
+
+      osMap.addLayer({
+          'id': 'subtiles-highlighted',
+          'type': 'fill',
+          'source': 'subgrid',
+          'paint': {
+              'fill-color': 'hsla(293,1.0,0.5,0.25)',
               'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
           },
-          'filter': ['in', 'title', '']
+          'filter': ['has', 'processed']
       });
 
       osMap.on('click', function(e) {
-          var filter = ['in', 'title'];
+          if (busy) {
+              console.log('we are busy processing tiles, try again later');
+              return;
+          }
+
+          busy = true;
+          var queue = q.queue(1)
           var layers = ['tiles'];
           var features = osMap.queryRenderedFeatures(e.point, { layers: layers });
           for (var i = 0; i < features.length; i++) {
               var title = features[i].properties.title;
-              filter.push(title);
               var tile = title
                   .match(/(\d+, \d+, \d+)/)[0]
                   .split(', ')
                   .map(s => parseInt(s));
               console.log('clicking tile', tile);
-              var z13 = getChildren(tile, 1).map(t => t.join('/'));
-              console.log('z13 children are', z13);
+
+              var z16 = getChildren(tile, 4);
+              subgrid.features = [];
+              for (var i = 0; i < z16.length; i++) {
+                  var f = {
+                      type: 'Feature',
+                      properties: {},
+                      geometry: tilebelt.tileToGeoJSON(z16[i])
+                  };
+                  subgrid.features.push(f);
+                  queue.defer(processTile, z16[i], i, osMap);
+              }
+              osMap.getSource('subgrid').setData(subgrid);
           }
 
-          osMap.setFilter('tiles-highlighted', filter);
+          queue.awaitAll(function (err, results) {
+              busy = false;
+              if (err) console.log(err);
+              else console.log('finished %d z16 tiles', results.length);
+          });
       });
   });
 
-  var map = new mapboxgl.Compare(satMap, osMap, {
-      // Set this to enable comparing two maps by mouse movement:
-      // mousemove: true
-  });
+  var map = new mapboxgl.Compare(satMap, osMap, {});
 };
 
-},{"@mapbox/tilebelt":2}],2:[function(require,module,exports){
+},{"@mapbox/tilebelt":2,"d3-queue":3}],2:[function(require,module,exports){
 'use strict';
 
 var d2r = Math.PI / 180,
@@ -398,4 +446,135 @@ module.exports = {
     pointToTileFraction: pointToTileFraction
 };
 
+},{}],3:[function(require,module,exports){
+// https://d3js.org/d3-queue/ Version 3.0.3. Copyright 2016 Mike Bostock.
+(function (global, factory) {
+  typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+  typeof define === 'function' && define.amd ? define(['exports'], factory) :
+  (factory((global.d3 = global.d3 || {})));
+}(this, (function (exports) { 'use strict';
+
+var slice = [].slice;
+
+var noabort = {};
+
+function Queue(size) {
+  if (!(size >= 1)) throw new Error;
+  this._size = size;
+  this._call =
+  this._error = null;
+  this._tasks = [];
+  this._data = [];
+  this._waiting =
+  this._active =
+  this._ended =
+  this._start = 0; // inside a synchronous task callback?
+}
+
+Queue.prototype = queue.prototype = {
+  constructor: Queue,
+  defer: function(callback) {
+    if (typeof callback !== "function" || this._call) throw new Error;
+    if (this._error != null) return this;
+    var t = slice.call(arguments, 1);
+    t.push(callback);
+    ++this._waiting, this._tasks.push(t);
+    poke(this);
+    return this;
+  },
+  abort: function() {
+    if (this._error == null) abort(this, new Error("abort"));
+    return this;
+  },
+  await: function(callback) {
+    if (typeof callback !== "function" || this._call) throw new Error;
+    this._call = function(error, results) { callback.apply(null, [error].concat(results)); };
+    maybeNotify(this);
+    return this;
+  },
+  awaitAll: function(callback) {
+    if (typeof callback !== "function" || this._call) throw new Error;
+    this._call = callback;
+    maybeNotify(this);
+    return this;
+  }
+};
+
+function poke(q) {
+  if (!q._start) {
+    try { start(q); } // let the current task complete
+    catch (e) {
+      if (q._tasks[q._ended + q._active - 1]) abort(q, e); // task errored synchronously
+      else if (!q._data) throw e; // await callback errored synchronously
+    }
+  }
+}
+
+function start(q) {
+  while (q._start = q._waiting && q._active < q._size) {
+    var i = q._ended + q._active,
+        t = q._tasks[i],
+        j = t.length - 1,
+        c = t[j];
+    t[j] = end(q, i);
+    --q._waiting, ++q._active;
+    t = c.apply(null, t);
+    if (!q._tasks[i]) continue; // task finished synchronously
+    q._tasks[i] = t || noabort;
+  }
+}
+
+function end(q, i) {
+  return function(e, r) {
+    if (!q._tasks[i]) return; // ignore multiple callbacks
+    --q._active, ++q._ended;
+    q._tasks[i] = null;
+    if (q._error != null) return; // ignore secondary errors
+    if (e != null) {
+      abort(q, e);
+    } else {
+      q._data[i] = r;
+      if (q._waiting) poke(q);
+      else maybeNotify(q);
+    }
+  };
+}
+
+function abort(q, e) {
+  var i = q._tasks.length, t;
+  q._error = e; // ignore active callbacks
+  q._data = undefined; // allow gc
+  q._waiting = NaN; // prevent starting
+
+  while (--i >= 0) {
+    if (t = q._tasks[i]) {
+      q._tasks[i] = null;
+      if (t.abort) {
+        try { t.abort(); }
+        catch (e) { /* ignore */ }
+      }
+    }
+  }
+
+  q._active = NaN; // allow notification
+  maybeNotify(q);
+}
+
+function maybeNotify(q) {
+  if (!q._active && q._call) {
+    var d = q._data;
+    q._data = undefined; // allow gc
+    q._call(q._error, d);
+  }
+}
+
+function queue(concurrency) {
+  return new Queue(arguments.length ? +concurrency : Infinity);
+}
+
+exports.queue = queue;
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
+})));
 },{}]},{},[1]);
