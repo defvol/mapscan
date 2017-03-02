@@ -1,4 +1,5 @@
 var q = require('d3-queue');
+var request = require('request');
 var tilebelt = require('@mapbox/tilebelt');
 
 var subgrid = {
@@ -26,12 +27,27 @@ function getChildren(tile, depth) {
 }
 
 function processTile(tile, featureIndex, osMap, callback) {
-    setTimeout(function () {
-        console.log('finished processing', tile);
-        subgrid.features[featureIndex].properties.processed = true;
-        osMap.getSource('subgrid').setData(subgrid);
-        callback();
-    }, 100);
+    var zxy = [ tile[2], tile[0], tile[1] ].join('/');
+    console.log('running prediction for', zxy);
+
+    request(`http://localhost:3000?tile=${zxy}`, function(err, res, body) {
+          if (!err && res.statusCode === 200) {
+            var classRegex = /(\w+way) .+: (\d+\.\d+)/;
+            var predictions = body.split('\n')
+              .map(line => line.match(classRegex))
+              .filter(match => match !== null)
+              .map(match => {
+                  var o = {};
+                  o[match[1]] = parseFloat(match[2]);
+                  return o;
+              });
+            console.log(zxy, ' = ', JSON.stringify(predictions));
+            subgrid.features[featureIndex].properties.processed = true;
+            osMap.getSource('subgrid').setData(subgrid);
+          }
+
+          callback();
+    });
 }
 
 window.onload = function() {
