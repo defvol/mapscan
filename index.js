@@ -1,4 +1,5 @@
 var q = require('d3-queue');
+var request = require('request');
 var tilebelt = require('@mapbox/tilebelt');
 
 var subgrid = {
@@ -26,12 +27,34 @@ function getChildren(tile, depth) {
 }
 
 function processTile(tile, featureIndex, osMap, callback) {
-    setTimeout(function () {
-        console.log('finished processing', tile);
-        subgrid.features[featureIndex].properties.processed = true;
-        osMap.getSource('subgrid').setData(subgrid);
-        callback();
-    }, 100);
+    var zxy = [ tile[2], tile[0], tile[1] ].join('/');
+    console.log('running prediction for', zxy);
+
+    request(`http://localhost:3000?tile=${zxy}`, function(err, res, body) {
+          if (!err && res.statusCode === 200) {
+            var classRegex = /(\w+way) .+: (\d+\.\d+)/;
+            var predictions = body.split('\n')
+              .map(line => line.match(classRegex))
+              .filter(match => match !== null)
+              .reduce((accu, match) => {
+                  accu[match[1]] = parseFloat(match[2]);
+                  return accu;
+              }, {});
+
+            console.log(zxy, ' = ', JSON.stringify(predictions));
+
+            if(predictions.highway >= 0.8) {
+                console.log('80% there is a highway in', zxy);
+                subgrid.features[featureIndex].properties.highway = true;
+            } else {
+                subgrid.features[featureIndex].properties.processed = true;
+            }
+
+            osMap.getSource('subgrid').setData(subgrid);
+          }
+
+          callback();
+    });
 }
 
 window.onload = function() {
@@ -92,6 +115,17 @@ window.onload = function() {
               'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
           },
           'filter': ['has', 'processed']
+      });
+
+      osMap.addLayer({
+          'id': 'subtiles-with-highway',
+          'type': 'fill',
+          'source': 'subgrid',
+          'paint': {
+              'fill-color': 'rgba(97,175,239,0.25)',
+              'fill-outline-color': 'rgba(97,175,239,0.5)'
+          },
+          'filter': ['has', 'highway']
       });
 
       osMap.on('click', function(e) {
