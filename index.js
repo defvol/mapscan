@@ -36,13 +36,20 @@ function processTile(tile, featureIndex, osMap, callback) {
             var predictions = body.split('\n')
               .map(line => line.match(classRegex))
               .filter(match => match !== null)
-              .map(match => {
-                  var o = {};
-                  o[match[1]] = parseFloat(match[2]);
-                  return o;
-              });
+              .reduce((accu, match) => {
+                  accu[match[1]] = parseFloat(match[2]);
+                  return accu;
+              }, {});
+
             console.log(zxy, ' = ', JSON.stringify(predictions));
-            subgrid.features[featureIndex].properties.processed = true;
+
+            if(predictions.highway >= 0.8) {
+                console.log('80% there is a highway in', zxy);
+                subgrid.features[featureIndex].properties.highway = true;
+            } else {
+                subgrid.features[featureIndex].properties.processed = true;
+            }
+
             osMap.getSource('subgrid').setData(subgrid);
           }
 
@@ -108,6 +115,17 @@ window.onload = function() {
               'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
           },
           'filter': ['has', 'processed']
+      });
+
+      osMap.addLayer({
+          'id': 'subtiles-with-highway',
+          'type': 'fill',
+          'source': 'subgrid',
+          'paint': {
+              'fill-color': 'rgba(97,175,239,0.25)',
+              'fill-outline-color': 'rgba(97,175,239,0.5)'
+          },
+          'filter': ['has', 'highway']
       });
 
       osMap.on('click', function(e) {
