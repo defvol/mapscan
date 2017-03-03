@@ -60,7 +60,7 @@ function processTile(tile, featureIndex, satMap, callback) {
 window.onload = function() {
   var satMap = new mapboxgl.Map({
       container: 'before',
-      style: 'mapbox://styles/rodowi/cizsnh775002y2ro75hhyrzmd',
+      style: 'mapbox://styles/mapbox/satellite-v9',
       hash: true,
       center: [-116.4988, 31.8893],
       zoom: 11
