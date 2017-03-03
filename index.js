@@ -62,15 +62,15 @@ window.onload = function() {
       container: 'before',
       style: 'mapbox://styles/rodowi/cizsnh775002y2ro75hhyrzmd',
       hash: true,
-      center: [0, 0],
-      zoom: 0
+      center: [-116.4988, 31.8893],
+      zoom: 11
   });
 
   var osMap = new mapboxgl.Map({
       container: 'after',
       style: 'mapbox://styles/mapbox/streets-v9',
-      center: [0, 0],
-      zoom: 0
+      center: [-116.4988, 31.8893],
+      zoom: 11
   });
 
   satMap.on('load', function() {
