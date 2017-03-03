@@ -136,30 +136,25 @@ window.onload = function() {
           }
 
           busy = true;
-          var queue = q.queue(4)
-          var layers = ['tiles'];
-          var features = satMap.queryRenderedFeatures(e.point, { layers: layers });
-          for (var i = 0; i < features.length; i++) {
-              var title = features[i].properties.title;
-              var tile = title
-                  .match(/(\d+, \d+, \d+)/)[0]
-                  .split(', ')
-                  .map(s => parseInt(s));
-              console.log('clicking tile', tile);
 
-              var z16 = getChildren(tile, 4);
-              subgrid.features = [];
-              for (var i = 0; i < z16.length; i++) {
-                  var f = {
-                      type: 'Feature',
-                      properties: {},
-                      geometry: tilebelt.tileToGeoJSON(z16[i])
-                  };
-                  subgrid.features.push(f);
-                  queue.defer(processTile, z16[i], i, satMap);
-              }
-              satMap.getSource('subgrid').setData(subgrid);
+          var zoom = 12
+          var tile = tilebelt.pointToTile(e.lngLat.lng, e.lngLat.lat, zoom)
+          var queue = q.queue(4)
+
+          console.log('clicking tile', tile);
+
+          var z16 = getChildren(tile, 4);
+          subgrid.features = [];
+          for (var i = 0; i < z16.length; i++) {
+              var f = {
+                  type: 'Feature',
+                  properties: {},
+                  geometry: tilebelt.tileToGeoJSON(z16[i])
+              };
+              subgrid.features.push(f);
+              queue.defer(processTile, z16[i], i, satMap);
           }
+          satMap.getSource('subgrid').setData(subgrid);
 
           queue.awaitAll(function (err, results) {
               busy = false;
