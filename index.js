@@ -60,7 +60,7 @@ function processTile(tile, featureIndex, satMap, callback) {
 window.onload = function() {
   var satMap = new mapboxgl.Map({
       container: 'before',
-      style: 'mapbox://styles/rodowi/cizsnh775002y2ro75hhyrzmd',
+      style: 'mapbox://styles/mapbox/satellite-v9',
       hash: true,
       center: [-116.4988, 31.8893],
       zoom: 11
@@ -75,22 +75,6 @@ window.onload = function() {
 
   satMap.on('load', function() {
       var busy = false;
-
-      satMap.addSource('grid', {
-          'type': 'vector',
-          'url': 'mapbox://rodowi.3hb2t4ac'
-      });
-
-      satMap.addLayer({
-          'id': 'tiles',
-          'type': 'fill',
-          'source': 'grid',
-          'source-layer': 'tiles',
-          'paint': {
-              'fill-color': 'hsla(0,0,1,0)',
-              'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
-          }
-      });
 
       satMap.addSource('subgrid', {
           type: 'geojson',
@@ -136,30 +120,25 @@ window.onload = function() {
           }
 
           busy = true;
-          var queue = q.queue(4)
-          var layers = ['tiles'];
-          var features = satMap.queryRenderedFeatures(e.point, { layers: layers });
-          for (var i = 0; i < features.length; i++) {
-              var title = features[i].properties.title;
-              var tile = title
-                  .match(/(\d+, \d+, \d+)/)[0]
-                  .split(', ')
-                  .map(s => parseInt(s));
-              console.log('clicking tile', tile);
 
-              var z16 = getChildren(tile, 4);
-              subgrid.features = [];
-              for (var i = 0; i < z16.length; i++) {
-                  var f = {
-                      type: 'Feature',
-                      properties: {},
-                      geometry: tilebelt.tileToGeoJSON(z16[i])
-                  };
-                  subgrid.features.push(f);
-                  queue.defer(processTile, z16[i], i, satMap);
-              }
-              satMap.getSource('subgrid').setData(subgrid);
+          var zoom = 12
+          var tile = tilebelt.pointToTile(e.lngLat.lng, e.lngLat.lat, zoom)
+          var queue = q.queue(4)
+
+          console.log('clicking tile', tile);
+
+          var z16 = getChildren(tile, 4);
+          subgrid.features = [];
+          for (var i = 0; i < z16.length; i++) {
+              var f = {
+                  type: 'Feature',
+                  properties: {},
+                  geometry: tilebelt.tileToGeoJSON(z16[i])
+              };
+              subgrid.features.push(f);
+              queue.defer(processTile, z16[i], i, satMap);
           }
+          satMap.getSource('subgrid').setData(subgrid);
 
           queue.awaitAll(function (err, results) {
               busy = false;
