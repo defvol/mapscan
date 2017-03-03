@@ -26,7 +26,7 @@ function getChildren(tile, depth) {
     return cc;
 }
 
-function processTile(tile, featureIndex, osMap, callback) {
+function processTile(tile, featureIndex, satMap, callback) {
     var zxy = [ tile[2], tile[0], tile[1] ].join('/');
     console.log('running prediction for', zxy);
 
@@ -50,7 +50,7 @@ function processTile(tile, featureIndex, osMap, callback) {
                 subgrid.features[featureIndex].properties.processed = true;
             }
 
-            osMap.getSource('subgrid').setData(subgrid);
+            satMap.getSource('subgrid').setData(subgrid);
           }
 
           callback();
@@ -60,27 +60,27 @@ function processTile(tile, featureIndex, osMap, callback) {
 window.onload = function() {
   var satMap = new mapboxgl.Map({
       container: 'before',
-      style: 'mapbox://styles/mapbox/satellite-v9',
+      style: 'mapbox://styles/rodowi/cizsnh775002y2ro75hhyrzmd',
       center: [0, 0],
       zoom: 0
   });
 
   var osMap = new mapboxgl.Map({
       container: 'after',
-      style: 'mapbox://styles/rodowi/ciz26g64u002g2spru77a8mk0',
+      style: 'mapbox://styles/mapbox/streets-v9',
       center: [0, 0],
       zoom: 0
   });
 
-  osMap.on('load', function() {
+  satMap.on('load', function() {
       var busy = false;
 
-      osMap.addSource('grid', {
+      satMap.addSource('grid', {
           'type': 'vector',
           'url': 'mapbox://rodowi.3hb2t4ac'
       });
 
-      osMap.addLayer({
+      satMap.addLayer({
           'id': 'tiles',
           'type': 'fill',
           'source': 'grid',
@@ -91,12 +91,12 @@ window.onload = function() {
           }
       });
 
-      osMap.addSource('subgrid', {
+      satMap.addSource('subgrid', {
           type: 'geojson',
           data: subgrid
       });
 
-      osMap.addLayer({
+      satMap.addLayer({
           'id': 'subtiles',
           'type': 'fill',
           'source': 'subgrid',
@@ -106,7 +106,7 @@ window.onload = function() {
           }
       });
 
-      osMap.addLayer({
+      satMap.addLayer({
           'id': 'subtiles-highlighted',
           'type': 'fill',
           'source': 'subgrid',
@@ -117,7 +117,7 @@ window.onload = function() {
           'filter': ['has', 'processed']
       });
 
-      osMap.addLayer({
+      satMap.addLayer({
           'id': 'subtiles-with-highway',
           'type': 'fill',
           'source': 'subgrid',
@@ -128,7 +128,7 @@ window.onload = function() {
           'filter': ['has', 'highway']
       });
 
-      osMap.on('click', function(e) {
+      satMap.on('click', function(e) {
           if (busy) {
               console.log('we are busy processing tiles, try again later');
               return;
@@ -137,7 +137,7 @@ window.onload = function() {
           busy = true;
           var queue = q.queue(1)
           var layers = ['tiles'];
-          var features = osMap.queryRenderedFeatures(e.point, { layers: layers });
+          var features = satMap.queryRenderedFeatures(e.point, { layers: layers });
           for (var i = 0; i < features.length; i++) {
               var title = features[i].properties.title;
               var tile = title
@@ -155,9 +155,9 @@ window.onload = function() {
                       geometry: tilebelt.tileToGeoJSON(z16[i])
                   };
                   subgrid.features.push(f);
-                  queue.defer(processTile, z16[i], i, osMap);
+                  queue.defer(processTile, z16[i], i, satMap);
               }
-              osMap.getSource('subgrid').setData(subgrid);
+              satMap.getSource('subgrid').setData(subgrid);
           }
 
           queue.awaitAll(function (err, results) {
