@@ -76,22 +76,6 @@ window.onload = function() {
   satMap.on('load', function() {
       var busy = false;
 
-      satMap.addSource('grid', {
-          'type': 'vector',
-          'url': 'mapbox://rodowi.3hb2t4ac'
-      });
-
-      satMap.addLayer({
-          'id': 'tiles',
-          'type': 'fill',
-          'source': 'grid',
-          'source-layer': 'tiles',
-          'paint': {
-              'fill-color': 'hsla(0,0,1,0)',
-              'fill-outline-color': 'hsla(293,1.0,0.5,0.5)'
-          }
-      });
-
       satMap.addSource('subgrid', {
           type: 'geojson',
           data: subgrid
