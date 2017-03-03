@@ -136,7 +136,7 @@ window.onload = function() {
           }
 
           busy = true;
-          var queue = q.queue(1)
+          var queue = q.queue(4)
           var layers = ['tiles'];
           var features = satMap.queryRenderedFeatures(e.point, { layers: layers });
           for (var i = 0; i < features.length; i++) {
