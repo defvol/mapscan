@@ -61,6 +61,7 @@ window.onload = function() {
   var satMap = new mapboxgl.Map({
       container: 'before',
       style: 'mapbox://styles/rodowi/cizsnh775002y2ro75hhyrzmd',
+      hash: true,
       center: [0, 0],
       zoom: 0
   });
